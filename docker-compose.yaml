@@ -1,30 +1,70 @@
 services:
-  redis:
-    image: redis
-    container_name: redis_server
-    restart: unless-stopped
-    command: redis-server --requirepass "${REDIS_PASSWORD:-mysecurepassword}" --appendonly yes
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-mysecurepassword}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: redis_commander
+  app:
+    # Build and run the NestJS API from the production Docker image.
+    image: nestjs-queue:local
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-mysecurepassword}
+      PORT: "${PORT:-3089}"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in your .env file}"
     ports:
-      - "8081:8081"
+      - "${PORT:-3089}:${PORT:-3089}"
+    healthcheck:
+      # Use the app's root route to verify that NestJS is accepting requests.
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:' + process.env.PORT, r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  redis:
+    # Persist queue data and require the same secret used by the app.
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - "${REDIS_PASSWORD:?Set REDIS_PASSWORD in your .env file}"
+      - --appendonly
+      - "yes"
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - -a
+        - "${REDIS_PASSWORD:?Set REDIS_PASSWORD in your .env file}"
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis-commander:
+    # Optional Redis browser, available locally at http://localhost:8081.
+    image: rediscommander/redis-commander:latest
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOSTS: "local:redis:6379:0:${REDIS_PASSWORD:?Set REDIS_PASSWORD in your .env file}"
+    ports:
+      - "127.0.0.1:8081:8081"
 
 volumes:
+  # Keep Redis queue data across container restarts and upgrades.
   redis_data:
