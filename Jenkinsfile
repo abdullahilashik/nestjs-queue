@@ -7,25 +7,20 @@ pipeline {
     disableConcurrentBuilds()
   }
 
-  tools {
-    nodejs "NodeJS"
-  }
-
   stages {
     stage('Install dependencies') {
       steps {
-        // Install exactly the dependency versions recorded in the lockfile.
-        sh 'npm ci'
+        // Run Node 24 in its official image so the agent does not need a compatible host Node install.
+        // Mount the workspace as the Jenkins user to keep generated files writable by Jenkins.
+        sh 'docker run --rm --user "$(id -u):$(id -g)" --env npm_config_cache=/tmp/npm-cache --volume "$WORKSPACE:/workspace" --workdir /workspace node:24-bookworm npm ci'
       }
     }
 
     stage('Test, lint, and compile') {
       steps {
-        // Fail the pipeline before creating an image if checks do not pass.
+        // Fail before packaging if tests, lint, or the production TypeScript build fail.
         // Jest needs Node's VM module support to load NestJS 12's ESM packages.
-        sh 'NODE_OPTIONS=--experimental-vm-modules npm test -- --runInBand'
-        sh 'npm run lint'
-        sh 'npm run build'
+        sh 'docker run --rm --user "$(id -u):$(id -g)" --env npm_config_cache=/tmp/npm-cache --volume "$WORKSPACE:/workspace" --workdir /workspace node:24-bookworm sh -c "NODE_OPTIONS=--experimental-vm-modules npm test -- --runInBand && npm run lint && npm run build"'
       }
     }
 
@@ -40,8 +35,8 @@ pipeline {
 
     stage('Deploy') {
       when {
-        // Automatically deploy only the main branch in a multibranch pipeline.
-        branch 'main'
+        // This Jenkins job checks out master; deploy only that branch.
+        branch 'master'
       }
       steps {
         // Run Compose on this Jenkins agent's Docker host using a stored secret.

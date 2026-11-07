@@ -582,6 +582,6 @@ Reply with **"Proceed"**, and we will dive into **Part 3 & the 20+ Production Pa
 
 ## Jenkins CI/CD
 
-Create a Jenkins multibranch pipeline for this repository. Its Linux agent needs Node.js 22.22.3+ or 24.15+, Docker, the Docker Compose plugin, and permission to use the Docker daemon. Add a Jenkins **Secret text** credential with ID `redis-password` and a strong Redis password.
+Create a Jenkins multibranch pipeline for this repository. Its Linux agent needs Docker, the Docker Compose plugin, and permission to use the Docker daemon; Node.js 24 runs in the official container, so a host Node installation is not required. Node 24 is needed for the repository's NestJS 12 ESM tests. Add a Jenkins **Secret text** credential with ID `redis-password` and a strong Redis password.
 
-The [Jenkinsfile](./Jenkinsfile) installs locked dependencies, runs tests, lint, and compilation, builds the app image, then deploys the `main` branch with Docker Compose on the same agent's Docker host. Configure that agent as the intended deployment host; a remote deployment requires adding your target host and deployment credentials.
+The [Jenkinsfile](./Jenkinsfile) installs locked dependencies, runs tests, lint, and compilation, builds the app image, then deploys the `master` branch with Docker Compose on the same agent's Docker host. Configure that agent as the intended deployment host; a remote deployment requires adding your target host and deployment credentials.
