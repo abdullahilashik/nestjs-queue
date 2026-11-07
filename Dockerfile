@@ -1,14 +1,24 @@
-FROM node:26.13.0-alpine3.18 AS builder
+# Install all dependencies and compile the NestJS application.
+FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
 COPY . .
 RUN npm run build
 
-# Runner build
-FROM node:26.13.0-alpine3.18 AS runner
+# Keep the runtime image small by installing production dependencies only.
+FROM node:22-alpine AS runner
+ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=builder /app/package*.json ./
-RUN npm install --production
-COPY --from=builder /app/dist ./dist
-CMD ["node", "dist/index.js"]
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Run the compiled entry point as the unprivileged Node.js user.
+COPY --from=builder --chown=node:node /app/dist ./dist
+USER node
+
+EXPOSE 3089
+CMD ["node", "dist/main.js"]

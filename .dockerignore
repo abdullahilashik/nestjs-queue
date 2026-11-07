@@ -1,0 +1,14 @@
+# Keep local dependencies and generated output out of the build context.
+node_modules
+dist
+coverage
+.git
+
+# Do not copy local environment files or secrets into the image.
+.env
+.env.*
+!.env.example
+
+# Exclude local editor and log files.
+.vscode
+*.log

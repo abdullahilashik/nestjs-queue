@@ -564,3 +564,24 @@ Reply with **"Proceed"**, and we will dive into **Part 3 & the 20+ Production Pa
 2. *Strict Idempotency Patterns* (preventing duplicate processing during retries).
 3. *Bull Board Monitoring Dashboard Integration*.
 4. *Rate-limited Third-Party API Egress Queues*.
+
+---
+
+# Running with Docker
+
+1. Copy `.env.example` to `.env` and replace `REDIS_PASSWORD` with a strong, unique value.
+2. Start the application, Redis, and the optional Redis Commander dashboard:
+
+   ```sh
+   docker compose up --build -d
+   ```
+
+3. Visit `http://localhost:3089` for the API and `http://localhost:8081` for Redis Commander.
+   Redis Commander and the host Redis port are bound to localhost; the application is exposed on its configured `PORT`.
+4. Stop the services with `docker compose down`. Redis data remains in the `redis_data` volume; use `docker compose down -v` only when intentionally deleting that data.
+
+## Jenkins CI/CD
+
+Create a Jenkins multibranch pipeline for this repository. Its Linux agent needs Node.js 22.22.3+ or 24.15+, Docker, the Docker Compose plugin, and permission to use the Docker daemon. Add a Jenkins **Secret text** credential with ID `redis-password` and a strong Redis password.
+
+The [Jenkinsfile](./Jenkinsfile) installs locked dependencies, runs tests, lint, and compilation, builds the app image, then deploys the `main` branch with Docker Compose on the same agent's Docker host. Configure that agent as the intended deployment host; a remote deployment requires adding your target host and deployment credentials.
