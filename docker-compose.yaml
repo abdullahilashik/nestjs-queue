@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:7.4-alpine
+    image: redis
     container_name: redis_server
     restart: unless-stopped
     command: redis-server --requirepass "${REDIS_PASSWORD:-mysecurepassword}" --appendonly yes
